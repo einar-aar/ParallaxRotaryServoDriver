@@ -8,6 +8,7 @@
 // Program for ATmega162 clocked with 12.8 MHz crystal
 
 volatile int cycle_time = 0
+volatile int cycle_time = 0
 volatile uint16_t overflow = 0;
 volatile bool rising = true;
 volatile uint8_t cycle_control_flag = 0;
@@ -45,11 +46,13 @@ void timer1Init(void) {
 ISR (TIMER1_CAPT_vect) {
 
     cycle_control_flag = 1;
+    cycle_control_flag = 1;
 }
 
 ISR (TIMER1_OVF_vect) {
 
     overflow++;
+    regulator_control_flag = 1;
     regulator_control_flag = 1;
 }
 
