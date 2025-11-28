@@ -7,9 +7,17 @@
 
 // Program for ATmega162 clocked with 12.8 MHz crystal
 
-volatile uint8_t cycle_time = 0
+volatile int cycle_time = 0
 volatile uint16_t overflow = 0;
 volatile bool rising = true;
+volatile uint8_t cycle_control_flag = 0;
+volatile uint8_t regulator_control_flag = 0;
+
+float Kp;
+float Ki;
+float referance_angle;
+float error;
+float acc_error;
 
 void timer1Init(void) {
 
@@ -35,26 +43,13 @@ void timer1Init(void) {
 
 ISR (TIMER1_CAPT_vect) {
 
-    int time_temp = ICR1;
-
-    if (rising) {
-
-        rising = false;
-        int start_time = time_temp;
-        overflow = 0;
-        TCCR1B &= ~(1 << ICES1);
-
-    } else {
-
-        cycle_time = time_temp + overflow * OCR1B - start_time;
-        rising = true;
-        TCCR1B |= (1 << ICES1);
-    }
+    cycle_control_flag = 1;
 }
 
 ISR (TIMER1_OVF_vect) {
 
     overflow++;
+    regulator_control_flag = 1;
 }
 
 void setServoSpeed(int16_t servospeed) {
@@ -88,5 +83,36 @@ void main() {
 
     timer1Init();
 
-    while (1);
+    while (1) {
+
+        if (cycle_control_flag) {
+
+            int time_temp = ICR1;
+            cycle_control_flag = 0;
+
+            if (rising) {
+
+                rising = false;
+                int start_time = time_temp;
+                overflow = 0;
+                TCCR1B &= ~(1 << ICES1);
+
+            } else {
+
+                cycle_time = time_temp + overflow * OCR1B - start_time;
+                rising = true;
+                TCCR1B |= (1 << ICES1);
+            }
+        }
+
+        if (regulator_control_flag) {
+
+            regulator_control_flag = 0;
+
+            error = referance_angle - getServoAngle();
+            acc_error += error;
+
+            setServoSpeed(Kp * error + Ki * acc_error);
+        }
+    }
 }
